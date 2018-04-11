@@ -6,4 +6,4 @@ Task 1: Compare Unregularized (Linear) and Regularized (Rideg, Lasso) regression
 Task 2: Generate graph for Reguarization path vs weight of sample data on Slump Flow
 
 Output:
-![output](Project1-Modeling Slump Flow/output/reg-path.PNG)
+![output](Project1-Modeling_Slump_Flow/output/reg-path.PNG)
