@@ -1,0 +1,248 @@
+---
+title: "CSE 574 - Programming Assignment 2"
+author: "Deep Narayan Mishra - 50245878"
+date: "April 18, 2018"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+---
+
+# Problem Statement:
+The project aims to replicate Fitting Classification Tree, Fitting Regression Tree, Bagging and Random Forests, and Boosting of dependency tree in Tree Based methods.
+
+# TASK 0 - Environment Setup:
+I performed all activities on Windows 10. I started with installing R and R Studio and to complete all the tasks I installed following packages in R Studio.
+
+**•	tree –** I installed this package and used for Classification and Regression Tree. It provides functionalities such as cv.tree  (for cross validation), deviance.tree (to extract deviance from tree), predict.tree (to predict from fitted tree object), prune.tree (for cost-complexity pruning of tree object) etc.
+
+**•	ISLR –** Used ISLR package for the collection of data-sets such as  Carseats, which is used in the introduction to statistical learning with application in R book.
+
+**•	MASS –** Installed and used MASS package. It provides functions and datasets to support Venable and Ripley. I have used Boston dataset of MASS package to demonstrate Regression Tree.
+
+**•	randomForest –** Installed and used randomForest package. The package contains functions for Classification and Regression based on forest of trees using random inputs based on Breiman. The randomForest() function of the package can be used to perform both forests and bagging function.
+
+**•	gbm –** Installed and used gbm package for boosting. The package provides generalized boosted regression model. It has an implementation of extensions to Freund and Schapire’s AdeBoost algorithm and Friedmans gradient boosting machine. I have used gbm() function of the package to fit boosted regression tree to the boston data set.
+
+**•	rmarkdown –** I installed rmarkdown package and used to create R markdown for all the given tasks. Using R mark down I was able to output the code and plots in pdf, docx and html file.
+
+**•	tinytex –** I had to install tinytex to compile R markdown document to pdf file.
+
+***
+
+######################################
+# TAST 1 - Fitting Classification Tree
+#####################################
+In this task we will fit classification tree. For that, we use classification trees to analyze the Carseats data set.
+
+```{r task1, echo=FALSE, fig.height=12, fig.width=18, message=FALSE, warning=FALSE, paged.print=TRUE}
+# Import libraries
+library(tree)
+library(ISLR)
+
+
+# Analyzing Carseats data which has continuous variable Sales
+attach(Carseats)
+High = ifelse(Sales <= 8, "No", "Yes")    # Create variable High
+Carseats.df = data.frame(Carseats, High)  # Create data frame with Carseats and High variable
+
+
+# Fit a classification tree to predict the value of High using all varibales except Sales
+tree.carseats = tree(High~.-Sales, Carseats.df)
+cat("Lists the variables used as internal nodes, terminal nodes, & (training) error rate in tree:")
+summary(tree.carseats)  # list vars used as internal node in tree, terminal nodes and error rate
+
+
+# Plot the dependency tree for carseats
+cat("Plot the dependency tree for carseats:")
+plot(tree.carseats)
+text(tree.carseats,pretty=0, cex=1.6)
+
+
+# Print tree to see the branch and split criteria
+cat("The branch and split criteria:")
+tree.carseats
+
+
+# Now split the observation into training and test set.
+# Build tree using training set and evaluate performance on test set.
+cat("Evaluate tree performance on test set:")
+set.seed(2)
+train=sample(1:nrow(Carseats.df),200)
+Carseats.df.test = Carseats[-train,]
+High.test = High[-train]
+tree.carseats = tree(High~.-Sales, Carseats.df,subset=train)
+tree.pred=predict(tree.carseats, Carseats.df.test, type="class") # type=class is for actual prediction
+table(tree.pred, High.test)  # result into approx 70% accurrecy
+
+
+# Consider pruning to check if it improves the result accuracy.
+# Identify the best tree nodes with result into lowest cv error rate
+cat("Pruning to check if it improves result accuracy")
+set.seed(3)
+cat("Determine optimum level of tree complexity:")
+cv.carseats=cv.tree(tree.carseats, FUN=prune.misclass)
+names(cv.carseats)
+cv.carseats  ## tree with 6 node results into lowest cv error rate of 50
+
+cat("Prune the tree based on cv result:")
+par(mfrow=c(1,2))
+plot(cv.carseats$size, cv.carseats$dev, type="b", cex.lab=1.8)
+plot(cv.carseats$k, cv.carseats$dev, type="b", cex.lab=1.8)
+cat("Apply prune.misclass() function to obtained 9 node tree:")
+prune.carseats = prune.misclass(tree.carseats, best=9)  
+plot(prune.carseats)
+text(prune.carseats,pretty=0, cex=1.6)
+
+# How well does this pruned tree perform on the test data?
+cat("Test how well pruned tree performs:")
+tree.pred=predict(prune.carseats, Carseats.df.test, type="class")
+table(tree.pred, High.test)  # now we achieved 77% accuracy on test data using prune
+
+cat("Obtained larger pruned by increasing the value of best with lower accuracy:")
+prune.carseats = prune.misclass(tree.carseats, best=15)
+plot(prune.carseats)
+text(prune.carseats, pretty=0, cex=1.6)
+tree.pred = predict(prune.carseats, Carseats.df.test, type="class")
+cat("Test result:")
+table(tree.pred, High.test)
+```
+***
+
+#####################################################
+# TAST 2 - Fitting Regression Tree to boston dataset
+###################################################
+Fitting regression tree on Boston data set. First we create a training set, and fit the tree to training data.
+
+```{r task2, echo=FALSE, message=FALSE, warning=FALSE}
+# import library
+library(MASS)
+
+cat("Creating the training set and fitting the training data:")
+set.seed(1)
+train = sample(1:nrow(Boston), nrow(Boston)/2)
+tree.boston = tree(medv~., Boston, subset=train)
+summary(tree.boston) # It shows only tree of the vars are used for constructing the tree
+
+# plot the tree now
+plot(tree.boston)
+text(tree.boston, pretty=0, cex=0.7)
+
+# Consider pruning to check if it improves performance
+# In this case the most complex tree is selected by cross validation
+cat("Applying pruning:")
+cv.boston = cv.tree(tree.boston)
+plot(cv.boston$size, cv.boston$dev, type="b")
+
+# We can prune the tree using prune.tree() function
+prune.boston = prune.tree(tree.boston, best=5)
+plot(prune.boston)
+text(prune.boston, pretty=0)
+
+cat("In keeping with cross validation results, we will use unpruned tree to make prediction on testset:")
+yhat = predict(tree.boston, newdata=Boston[-train,])
+boston.test = Boston[-train, "medv"]
+plot(yhat, boston.test)
+abline(0, 1)
+cat("Test set MSE:")
+mean((yhat-boston.test)^2) ## The testset associated with regression tree is 25.04559
+```
+***
+
+#######################################
+# TAST 3 - Bagging and Random forests
+#####################################
+Applying Bagging and Random forests to the Boston data using the randomForest package in R.
+
+```{r task3, echo=FALSE, message=FALSE, warning=FALSE}
+# Import library
+library(randomForest)
+library(MASS)
+
+
+# Applying bagging and random forests in boston dataset
+set.seed(1)
+bag.boston = randomForest(medv~., data=Boston, subset=train, mtry=13, importance=TRUE)
+bag.boston  ## mtry = 13 indicate all the 13 predicate should be considered for each split of tree
+
+cat("Test on how well does the bagged model performed on the testset:")
+yhat.bag = predict(bag.boston, newdata = Boston[-train,])
+plot(yhat.bag, boston.test)
+abline(0,1)
+mean((yhat.bag - boston.test)^2)  # Testset MSE associated with bagged version is 13.50808 almost half of optimal pruned singal tree
+
+# we would change the number of tree grown by randomForest function using ntree argument
+bag.boston = randomForest(medv~., data = Boston, subset = train, mtry = 13, ntree = 25)
+yhat.bag = predict(bag.boston, newdata = Boston[-train,])
+mean((yhat.bag - boston.test)^2)
+
+# By default randomForest() use p/3 vars when building a random forest of regression
+#  and sqrt(p) when building random forest of classification.
+# Here we will use mtry = 6
+set.seed(1)
+rf.boston = randomForest(medv~., data = Boston, subset = train, mtry = 6, importance = TRUE)
+yhat.rf = predict(rf.boston, newdata = Boston[-train,])
+mean((yhat.rf - boston.test)^2) # The testset MSE is 11.66; this indicates random forest yielded an improvement over bagging here
+
+cat("Importance of each variable:")
+importance(rf.boston)
+
+cat("Plot for each importance measures:")
+varImpPlot(rf.boston)
+```
+
+***
+
+#####################################################
+# TAST 4 - Fitting Boosted Regression Tree
+###################################################
+Here we will use gbm function of gbm package to fit boosted regression trees to the Boston data set. we will be using gaussian
+distribution to perform this task.
+
+```{r task4, echo=FALSE, message=FALSE, warning=FALSE}
+# Import library
+library(gbm)
+
+# Fitting boosted regression tree on boston data
+# Using gaussian distribution as it is a regression problem. If it was classifcation would have used bernoulli
+set.seed(1)
+boost.boston = gbm(medv~., data=Boston[train,], distribution = "gaussian", n.trees = 5000, interaction.depth = 4)
+
+cat("Summary on relative influence and relative influence statistics:")
+summary(boost.boston)
+
+cat("Produce partial dependence plots for rm and lstat variables:")
+par(mfrow = c(1,2))
+plot(boost.boston, i = "rm")
+plot(boost.boston, i = "lstat")
+
+
+cat("Now using the boosted model to predict medv:")
+yhat.boost = predict(boost.boston, newdata = Boston[-train, ], n.trees = 5000)
+mean((yhat.boost - boston.test) ^ 2)  # test MSE is 11.84434, which is similar to random forest and superior to that for bagging
+
+# We will perform boosting with different value of the shrinkage parameter 'lambda'.
+#  the default value for lambda is o.001. We will try with 0.2
+cat("Boosting with lambda 0.2:")
+boost.boston = gbm(medv~., data = Boston[train,], distribution = "gaussian", n.trees = 5000, interaction.depth = 4, shrinkage = 0.2, verbose = F)
+yhat.boost = predict(boost.boston, newdata = Boston[-train,], n.trees = 5000)
+mean((yhat.boost - boston.test)^2)  # So lambda 0.2 results in slightly lower MSE that is 11.5110
+```
+***
+
+
+# TASK 5 – Summary:
+I started working on the Assignment since 18th of April. I have spent 3 to 4 hours daily for 4 days to complete the task.
+
+Initially, I spent some time in setting up the environment (R, R Studio), then I started this assignment by reading the ISLR Chapter 8 introduction to understand the basics of Decision Tree and how the decision tree is used for Regression and Classification problem. I read and understood the first example Regression tree illustration on Hitters data. It gave me a preliminary understanding of the approach used in Decision Tree. The bagging, random forests and boosting explanations helped me understand how these concepts can be used to construct more powerful prediction models.
+
+After having a fair idea on Tree Based Methods, I replicated Task1, Task2, Task3 and Task4. There were some small modifications I did in order to replicate this examples. Such as, in Task1 I have used Carseats.df as the name for dataframe with Carseats’ and High variable so that R doesn’t complain of masking variable name. Also, I have used ‘cex’ attribute to change the size of text for plots so that co-ordinate texts in decision tree doesn’t overlap much with each other. Apart from this the tasks were straightforward and I was able to complete it without any hurdle.
+
+To complete this task I have not collaborated with anyone. I have referred the prescribed book.
+
+**Reference:**
+I have referred "An Introduction to Statistical Learning with Applications in R"" (ISLR) chapter 8 Tree-Based Method to replicate all the tasks of Programming assignment.
+ 
+***
+
