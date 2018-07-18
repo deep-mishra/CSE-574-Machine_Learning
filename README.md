@@ -18,4 +18,4 @@ Output:
 
 The project aims to demonstrate the Fitting Classification Tree, Fitting Regression Tree, Bagging and Random Forests, and Boosting of dependency tree in Tree Based methods.
 
-[project](Project2-Decision_Tree/)
+[TreeBasedClassification.Rmd](Project2-Decision_Tree/tree-based-classification.Rmd)
